@@ -7,16 +7,27 @@ as a service, Rally.
 
 The rally snap can be installed directly from the snap store:
 
-    sudo snap install --edge --classic rally
+    sudo snap install --edge rally
 
-then setup the alias for rally-manage (this will automatically happen at some
-point in the future):
+Initialize your local rally db
 
-    sudo snap alias rally rally-manage
+    rally db create
 
-and then initialize your local rally db:
+Register your existing OpenStack deployment using the credentials in the environment
 
-    rally-manage db create
+    rally deployment create --fromenv --name my-xena-cloud
+
+Install desired Tempest verifier version
+
+    rally verify create-verifier --type tempest --platform openstack --version xena-last --name tempest-xena
+
+Install Tempest plugins
+
+    rally verify add-verifier-ext --id tempest-xena --source https://opendev.org/openstack/octavia-tempest-plugin --version xena-last
+
+Run verification
+
+    rally verify start --id tempest-xena --deployment-id my-xena-cloud --pattern set=smoke --concurrency 4
 
 ## Support
 

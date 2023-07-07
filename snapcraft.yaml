@@ -1,5 +1,5 @@
 name: rally
-version: 1.1.0
+version: 3.4.0
 summary: OpenStack Benchmark-as-a-Service
 description: |
   Rally is a Benchmark-as-a-Service project for OpenStack.
@@ -7,27 +7,50 @@ description: |
   Rally is intended to provide the community with a benchmarking
   tool that is capable of performing specific, complicated and
   reproducible test cases on real deployment scenarios.
-# Main target for rally is classic host, and it won't run
-# under strict due to use in multiprocessing of shared
-# memory.
-confinement: classic
-grade: devel
+
+base: core22
+confinement: strict
+grade: stable
+
+environment:
+  GIT_EXEC_PATH: $SNAP/usr/lib/git-core
+  GIT_TEMPLATE_DIR: $SNAP/usr/share/git-core/templates
+  GIT_CONFIG_NOSYSTEM: 1
+  C_INCLUDE_PATH: $SNAP/usr/include:$SNAP/usr/include/$SNAPCRAFT_ARCH_TRIPLET:$SNAP/usr/include/python3.10
+
+# rally installs tempest in venv and needs to compile some python
+# modules. without this bind mount, ld cannot find this library
+# during link time.
+# https://bugs.launchpad.net/snapcraft/+bug/2026734
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libc_nonshared.a:
+    bind-file: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/libc_nonshared.a
+
+plugs:
+  shared-memory:
+    private: true
 
 apps:
   rally:
-    command: rally
-  rally-manage:
-    command: rally-manage
-    aliases:
-      - rally-manage
+    command: bin/rally
+    completer: usr/share/bash-completion/completions/rally
+    plugs:
+      - home
+      - network
+      - shared-memory
 
 parts:
   rally:
     plugin: python
-    python-version: python2
-    source: http://tarballs.openstack.org/rally/rally-$SNAPCRAFT_PROJECT_VERSION.tar.gz
-    build-packages:
-      - libffi-dev
-      - libssl-dev
-      - pkg-config
-      - gcc
+    source: https://tarballs.opendev.org/openstack/rally/rally-$SNAPCRAFT_PROJECT_VERSION.tar.gz
+    python-packages:
+      - rally-openstack
+    stage-packages:
+      - git
+      - python3-dev
+      - build-essential
+    override-prime: |
+      craftctl default
+      mkdir -p usr/share/bash-completion/completions
+      ./bin/rally bash-completion > usr/share/bash-completion/completions/rally
+      echo "complete -o filenames -F _rally rally.rally" >> usr/share/bash-completion/completions/rally
